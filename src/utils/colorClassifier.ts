@@ -14,14 +14,15 @@ export interface ColorResult {
 }
 
 // Target centroids for each color (H, S, V)
-// S and V are used to filter out grays/blacks/whites first.
-// H is the primary differentiator.
+// Aggressively map Blue/Indigo range to 'Purple'
 const TARGET_COLORS: { label: ColorLabel; h: number }[] = [
-	{ label: "빨간색", h: 0 }, // Also 360
+	{ label: "빨간색", h: 0 },
 	{ label: "주황색", h: 25 },
-	{ label: "노란색", h: 50 }, // Yellow is ~60, but often golden on wool
-	{ label: "하늘색", h: 195 }, // Sky Blue (Cyan is 180, Blue is 240)
-	{ label: "보라색", h: 280 }, // Purple
+	{ label: "노란색", h: 50 },
+	{ label: "하늘색", h: 175 }, // Strictly Cyan/Sky
+	{ label: "보라색", h: 210 }, // Light Blue -> Maps to Purple
+	{ label: "보라색", h: 250 }, // Blue -> Maps to Purple
+	{ label: "보라색", h: 290 }, // Purple -> Maps to Purple
 ];
 
 // RGB to HSV conversion
@@ -61,31 +62,27 @@ export function rgbToHsv(
 	return { h, s: s * 100, v: v * 100 };
 }
 
-// Distance based classification to prevent flickering at boundaries
+// Distance based classification
 export function classifyColor(
 	h: number,
 	s: number,
 	v: number
 ): { label: ColorLabel; confidence: number } {
-	// 1. Filter out Achromatic colors (Black, White, Gray)
-	// Low Saturation OR Low Value
-	if (s < 15 || v < 20) {
+	// Relaxed saturation threshold
+	if (s < 8 || v < 15) {
 		return { label: "알 수 없음", confidence: 0.5 };
 	}
 
-	// 2. Find closest target hue
 	let minDistance = Infinity;
 	let closestLabel: ColorLabel = "알 수 없음";
 
 	for (const target of TARGET_COLORS) {
-		// Calculate angular distance for Hue (circular 0-360)
 		let dist = Math.abs(h - target.h);
 		if (dist > 180) dist = 360 - dist;
 
-		// Special case for Red at 360
 		if (target.label === "빨간색") {
+			// Check 360 wrap
 			let dist2 = Math.abs(h - 360);
-			if (dist2 > 180) dist2 = 360 - dist2;
 			dist = Math.min(dist, dist2);
 		}
 
@@ -95,21 +92,34 @@ export function classifyColor(
 		}
 	}
 
-	// 3. Confidence based on distance (closer = higher confidence)
-	// Max relevant distance is ~90 (orthogonal), but let's say 45 is "far".
-	const confidence = Math.max(0, 1 - minDistance / 45);
+	// Calculate confidence (simple distance based)
+	const confidence = Math.max(0, 1 - minDistance / 60);
 
-	// 4. Thresholding to prevent forced classification of unrelated colors (e.g. Green)
-	// Green is ~120. Closest is Yellow(50) or SkyBlue(195).
-	// Dist to Yellow: 70. Dist to SkyBlue: 75.
-	// Both are > 45, so confidence would be low.
-	// We can force 'Unknown' if confidence is too low.
-	if (confidence < 0.4) {
-		// It's likely green or blue or pink that doesn't fit well
-		return { label: "알 수 없음", confidence: confidence };
-	}
-
+	// Previously we filtered low confidence, but to match 'quiz.html' logic which was better:
+	// always return the closest match if reasonable S/V passed.
 	return { label: closestLabel, confidence };
+}
+
+// Force classification without thresholds (Fallback)
+export function forceClassifyColor(h: number): ColorLabel {
+	let minDistance = Infinity;
+	let closestLabel: ColorLabel = "알 수 없음";
+
+	for (const target of TARGET_COLORS) {
+		let dist = Math.abs(h - target.h);
+		if (dist > 180) dist = 360 - dist;
+
+		if (target.label === "빨간색") {
+			let dist2 = Math.abs(h - 360);
+			dist = Math.min(dist, dist2);
+		}
+
+		if (dist < minDistance) {
+			minDistance = dist;
+			closestLabel = target.label;
+		}
+	}
+	return closestLabel;
 }
 
 // Helper to analyze a region
@@ -120,7 +130,6 @@ export function analyzeRegionColor(
 	width: number,
 	height: number
 ): ColorResult {
-	// Fallback if K-means not used
 	const data = imageData.data;
 	const imgWidth = imageData.width;
 	let totalR = 0,
@@ -150,6 +159,14 @@ export function analyzeRegionColor(
 	const g = Math.round(totalG / count);
 	const b = Math.round(totalB / count);
 	const hsv = rgbToHsv(r, g, b);
+
+	// Debug log
+	console.log(
+		`Region HSV: H=${Math.round(hsv.h)}, S=${Math.round(hsv.s)}, V=${Math.round(
+			hsv.v
+		)}`
+	);
+
 	const { label, confidence } = classifyColor(hsv.h, hsv.s, hsv.v);
 
 	return { label, confidence, rgb: { r, g, b }, hsv };
@@ -185,6 +202,10 @@ export function extractDominantColors(
 		.map((c) => {
 			const hsv = rgbToHsv(c[0], c[1], c[2]);
 			const { label, confidence } = classifyColor(hsv.h, hsv.s, hsv.v);
+
+			// Debug log
+			console.log(`Dominant HSV: H=${Math.round(hsv.h)} => ${label}`);
+
 			return {
 				label,
 				confidence,
@@ -210,9 +231,7 @@ function kMeansClustering(
 		if (pixel) centroids.push(pixel);
 	}
 
-	// If we failed to fill centroids (shouldn't happen but for safety)
 	while (centroids.length < k && centroids.length > 0) {
-		// Duplicate existing to avoid crash
 		const existing = centroids[0];
 		if (existing) centroids.push(existing);
 		else break;

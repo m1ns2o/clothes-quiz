@@ -1,14 +1,38 @@
 <script setup lang="ts">
-import ClothColorDetector from './components/ClothColorDetector.vue'
+// No script needed as router handles views
 </script>
 
 <template>
-  <ClothColorDetector />
+	<div class="app-layout">
+		<main class="page-container">
+			<router-view />
+		</main>
+	</div>
 </template>
 
 <style>
+/* Global Reset */
+body {
+	margin: 0;
+}
+
 #app {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	min-height: 100vh;
+	background: #ffffff;
+	font-family: "Pretendard", sans-serif;
+	color: #333;
+}
+
+.app-layout {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+}
+
+.page-container {
+	flex: 1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 </style>

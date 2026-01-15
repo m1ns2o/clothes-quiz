@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ko">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>옷 색상 퀴즈</title>
+		<!-- Removed Global Script -->
+		<style>
+			@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
+
+			body {
+				margin: 0;
+				padding: 0;
+				font-family: "Pretendard", sans-serif;
+				background-color: #ffffff;
+				color: #333;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				min-height: 100vh;
+			}
+
+			.container {
+				width: 100%;
+				max-width: 500px;
+				padding: 20px;
+				box-sizing: border-box;
+				text-align: center;
+			}
+
+			h1 {
+				font-size: 1.5rem;
+				margin-bottom: 30px;
+				color: #111;
+			}
+
+			/* Camera Area */
+			.camera-wrapper {
+				position: relative;
+				width: 100%;
+				aspect-ratio: 3/4;
+				background: #f0f0f0;
+				border-radius: 20px;
+				overflow: hidden;
+				box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+				margin-bottom: 20px;
+			}
+
+			video,
+			canvas {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				transform: scaleX(-1); /* Mirror */
+			}
+
+			/* Guides */
+			.guide-overlay {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				pointer-events: none;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			}
+			.guide-svg {
+				width: 60%;
+				height: 60%;
+				opacity: 0.6;
+			}
+
+			/* Controls */
+			.controls {
+				display: flex;
+				justify-content: center;
+				gap: 15px;
+			}
+
+			button {
+				background: #000;
+				color: white;
+				border: none;
+				padding: 15px 30px;
+				border-radius: 30px;
+				font-size: 1rem;
+				font-weight: 600;
+				cursor: pointer;
+				transition: all 0.2s;
+			}
+			button:active {
+				transform: scale(0.95);
+			}
+			button.secondary {
+				background: #eee;
+				color: #333;
+			}
+
+			/* Result Popup */
+			.result-modal {
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(255, 255, 255, 0.95);
+				z-index: 100;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+				padding: 20px;
+			}
+			.result-modal.active {
+				display: flex;
+			}
+
+			.result-icon {
+				font-size: 4rem;
+				margin-bottom: 20px;
+			}
+			.result-title {
+				font-size: 1.8rem;
+				font-weight: bold;
+				margin-bottom: 10px;
+			}
+			.result-desc {
+				color: #666;
+				margin-bottom: 30px;
+				font-size: 1.1rem;
+			}
+
+			.correct-content {
+				display: none;
+				text-align: center;
+			}
+			.wrong-content {
+				display: none;
+				text-align: center;
+			}
+
+			/* Loader */
+			.loader {
+				display: none;
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				background: rgba(0, 0, 0, 0.7);
+				color: white;
+				padding: 15px 25px;
+				border-radius: 30px;
+				font-weight: bold;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>🔍 보라색 옷을 찾아라!</h1>
+
+			<div class="camera-wrapper">
+				<video id="video" playsinline autoplay muted></video>
+				<canvas id="output_canvas"></canvas>
+
+				<div class="guide-overlay">
+					<svg viewBox="0 0 200 200" class="guide-svg">
+						<path
+							d="M 60 80 Q 100 80 140 80 L 140 180 L 60 180 Z"
+							fill="none"
+							stroke="white"
+							stroke-width="2"
+							stroke-dasharray="5,5"
+						/>
+						<circle
+							cx="100"
+							cy="50"
+							r="15"
+							fill="none"
+							stroke="white"
+							stroke-width="2"
+							stroke-dasharray="5,5"
+						/>
+					</svg>
+				</div>
+				<div id="loader" class="loader">분석 중...</div>
+			</div>
+
+			<div class="controls">
+				<button id="snapBtn">📸 촬영 및 확인</button>
+			</div>
+		</div>
+
+		<!-- Result Modal -->
+		<div id="resultModal" class="result-modal">
+			<!-- Correct Content -->
+			<div id="correctContent" class="correct-content">
+				<div class="result-icon">🎉</div>
+				<div class="result-title">정답입니다!</div>
+				<div class="result-desc">보라색 옷을 정확히 찾으셨네요.</div>
+				<div
+					style="
+						background: #f8f9fa;
+						padding: 20px;
+						border-radius: 15px;
+						margin-bottom: 20px;
+					"
+				>
+					<strong>🎁 숨겨진 메시지:</strong><br />
+					"당신은 색채의 마법사!"
+				</div>
+				<button onclick="resetQuiz()">다시 하기</button>
+			</div>
+
+			<!-- Wrong Content -->
+			<div id="wrongContent" class="wrong-content">
+				<div class="result-icon">🤔</div>
+				<div class="result-title">아쉽네요...</div>
+				<div class="result-desc">
+					인식된 색상:
+					<span
+						id="detectedColorName"
+						style="color: red; font-weight: bold"
+					></span>
+				</div>
+				<p>보라색 옷이 맞나요? 다시 시도해보세요!</p>
+				<button class="secondary" onclick="resetQuiz()">다시 시도</button>
+			</div>
+		</div>
+
+		<!-- MAIN MODULE SCRIPT -->
+		<script type="module">
+			import {
+				FilesetResolver,
+				PoseLandmarker,
+			} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js";
+
+			// --- 1. SETTINGS & CONSTANTS ---
+			const CORRECT_ANSWER = "보라색";
+
+			const TARGET_COLORS = [
+				{ label: "빨간색", h: 0 },
+				{ label: "주황색", h: 25 },
+				{ label: "노란색", h: 50 },
+				{ label: "하늘색", h: 175 },
+				{ label: "보라색", h: 210 },
+				{ label: "보라색", h: 250 },
+				{ label: "보라색", h: 290 },
+			];
+
+			let poseLandmarker = undefined;
+			let video = document.getElementById("video");
+			let canvas = document.getElementById("output_canvas");
+			let ctx = canvas.getContext("2d");
+			let stream = null;
+
+			// --- 2. MEDIAPIPE SETUP ---
+			async function initAI() {
+				try {
+					const vision = await FilesetResolver.forVisionTasks(
+						"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+					);
+					poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+						baseOptions: {
+							modelAssetPath:
+								"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+							delegate: "GPU",
+						},
+						runningMode: "IMAGE",
+						numPoses: 1,
+					});
+					console.log("MediaPipe Loaded");
+				} catch (err) {
+					console.error(err);
+					alert("AI 모델 로딩 실패: " + err);
+				}
+			}
+
+			// --- 3. CAMERA SETUP ---
+			async function startCamera() {
+				if (stream) {
+					stream.getTracks().forEach((track) => track.stop());
+				}
+				try {
+					stream = await navigator.mediaDevices.getUserMedia({
+						video: { width: 1280, height: 720, facingMode: "user" },
+					});
+					video.srcObject = stream;
+				} catch (e) {
+					console.error(e);
+					alert("카메라 권한이 필요합니다.");
+				}
+			}
+
+			// --- 4. COLOR LOGIC ---
+			function rgbToHsv(r, g, b) {
+				r /= 255;
+				g /= 255;
+				b /= 255;
+				const max = Math.max(r, g, b),
+					min = Math.min(r, g, b);
+				const diff = max - min;
+				let h = 0,
+					s = max === 0 ? 0 : diff / max,
+					v = max;
+
+				if (diff !== 0) {
+					switch (max) {
+						case r:
+							h = 60 * (((g - b) / diff) % 6);
+							break;
+						case g:
+							h = 60 * ((b - r) / diff + 2);
+							break;
+						case b:
+							h = 60 * ((r - g) / diff + 4);
+							break;
+					}
+				}
+				if (h < 0) h += 360;
+				return { h, s: s * 100, v: v * 100 };
+			}
+
+			function classifyColor(h, s, v) {
+				if (s < 8 || v < 15) return { label: "알 수 없음", confidence: 0 };
+
+				let minDistance = Infinity;
+				let closestLabel = "알 수 없음";
+
+				for (const target of TARGET_COLORS) {
+					let dist = Math.abs(h - target.h);
+					if (dist > 180) dist = 360 - dist;
+					if (target.label === "빨간색" && target.h === 0) {
+						let dist2 = Math.abs(h - 360);
+						dist = Math.min(dist, dist2);
+					}
+					if (dist < minDistance) {
+						minDistance = dist;
+						closestLabel = target.label;
+					}
+				}
+				return { label: closestLabel, confidence: 1 };
+			}
+
+			function getDominantColor(imageData) {
+				const data = imageData.data;
+				let r = 0,
+					g = 0,
+					b = 0,
+					count = 0;
+				for (let i = 0; i < data.length; i += 4 * 5) {
+					r += data[i];
+					g += data[i + 1];
+					b += data[i + 2];
+					count++;
+				}
+				r = Math.round(r / count);
+				g = Math.round(g / count);
+				b = Math.round(b / count);
+				const hsv = rgbToHsv(r, g, b);
+				const result = classifyColor(hsv.h, hsv.s, hsv.v);
+				return result;
+			}
+
+			// --- 5. MAIN LOGIC ---
+			document.getElementById("snapBtn").addEventListener("click", async () => {
+				if (!poseLandmarker)
+					return alert("AI 모델 로딩 중입니다. 잠시만 기다려주세요.");
+
+				document.getElementById("loader").style.display = "block";
+
+				// 1. Capture
+				canvas.width = video.videoWidth;
+				canvas.height = video.videoHeight;
+				const w = canvas.width;
+				const h = canvas.height;
+
+				ctx.save();
+				ctx.translate(w, 0);
+				ctx.scale(-1, 1);
+				ctx.drawImage(video, 0, 0, w, h);
+				ctx.restore();
+
+				// 2. Detect
+				const startT = performance.now();
+				const results = await poseLandmarker.detect(canvas);
+
+				// Default ROI (Center)
+				let roi = { x: w * 0.375, y: h * 0.375, w: w * 0.25, h: h * 0.25 };
+
+				if (results.landmarks.length > 0) {
+					const lm = results.landmarks[0];
+					const lSh = lm[11],
+						rSh = lm[12],
+						lHip = lm[23],
+						rHip = lm[24];
+					// Use if visible
+					if (lSh && rSh && lHip && rHip) {
+						const cx = (lSh.x + rSh.x) / 2;
+						const shoulderW = Math.abs(lSh.x - rSh.x);
+						const shoulderY = (lSh.y + rSh.y) / 2;
+						const hipY = (lHip.y + rHip.y) / 2;
+						const torsoH = Math.abs(hipY - shoulderY);
+
+						// ROI: Chest (Upper Torso)
+						roi.w = shoulderW * 0.4 * w;
+						roi.h = torsoH * 0.4 * h;
+						roi.x = cx * w - roi.w / 2;
+						roi.y = shoulderY * h + torsoH * 0.2 * h;
+					}
+				}
+
+				// 3. Color
+				const imageData = ctx.getImageData(roi.x, roi.y, roi.w, roi.h);
+				const result = getDominantColor(imageData);
+
+				document.getElementById("loader").style.display = "none";
+				showResult(result.label);
+			});
+
+			function showResult(detectedLabel) {
+				const modal = document.getElementById("resultModal");
+				const correctDiv = document.getElementById("correctContent");
+				const wrongDiv = document.getElementById("wrongContent");
+
+				modal.classList.add("active");
+
+				if (detectedLabel === CORRECT_ANSWER) {
+					correctDiv.style.display = "block";
+					wrongDiv.style.display = "none";
+				} else {
+					correctDiv.style.display = "none";
+					wrongDiv.style.display = "block";
+					document.getElementById("detectedColorName").innerText =
+						detectedLabel;
+				}
+			}
+
+			// Expose resetQuiz to window for button onclick
+			window.resetQuiz = function () {
+				document.getElementById("resultModal").classList.remove("active");
+				// Simply clear the canvas to reveal the video feed underneath
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+			};
+
+			// Init
+			initAI();
+			startCamera();
+		</script>
+	</body>
+</html>

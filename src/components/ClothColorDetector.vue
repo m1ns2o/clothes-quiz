@@ -1,61 +1,35 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
+import { PoseLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import {
-	PoseLandmarker,
-	FilesetResolver,
-	DrawingUtils,
-	type NormalizedLandmark,
-} from "@mediapipe/tasks-vision";
-import {
-	extractDominantColors,
+	analyzeRegionColor,
+	forceClassifyColor,
 	type ColorResult,
-	type ColorLabel,
 } from "../utils/colorClassifier";
+
+const CORRECT_ANSWER = "보라색";
 
 // Basic refs
 const videoRef = ref<HTMLVideoElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-const status = ref("초기화 중...");
+
+const status = ref("준비 중...");
 const errorMsg = ref("");
 
-const detectedColor = ref<ColorResult | null>(null);
-const showDebug = ref(false);
+// State
+const isCameraReady = ref(false);
+const isProcessing = ref(false);
+const quizState = ref<"idle" | "success" | "failure">("idle");
+const detectedResult = ref<ColorResult | null>(null);
 
 let poseLandmarker: PoseLandmarker | null = null;
 let stream: MediaStream | null = null;
-let animationId: number | null = null;
-let lastVideoTime = -1;
 
-// Persistence & Smoothing
-let lastLandmarks: NormalizedLandmark[] | null = null;
-let missingFrames = 0;
-const MAX_MISSING_FRAMES = 15;
-
-let smoothedRect = { x: 0, y: 0, width: 0, height: 0 };
-const SMOOTHING_FACTOR = 0.15; // More stable
-
-const colorLabels: ColorLabel[] = [
-	"하늘색",
-	"노란색",
-	"주황색",
-	"빨간색",
-	"보라색",
-];
-
-const colorStyles = computed(() => ({
-	하늘색: { bg: "#87CEEB", text: "#1a5276" },
-	노란색: { bg: "#FFD700", text: "#7d6608" },
-	주황색: { bg: "#FF8C00", text: "#7e4100" },
-	빨간색: { bg: "#DC143C", text: "#ffffff" },
-	보라색: { bg: "#8B008B", text: "#ffffff" },
-	"알 수 없음": { bg: "#808080", text: "#ffffff" },
-}));
-
-async function initSystem() {
+async function initMediaPipe() {
 	try {
 		status.value = "AI 모델 로딩 중...";
 		const vision = await FilesetResolver.forVisionTasks(
-			"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+			"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
 		);
 
 		poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
@@ -64,468 +38,475 @@ async function initSystem() {
 					"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
 				delegate: "GPU",
 			},
-			runningMode: "VIDEO",
+			runningMode: "IMAGE",
 			numPoses: 1,
 			minPoseDetectionConfidence: 0.3,
 			minPosePresenceConfidence: 0.3,
-			minTrackingConfidence: 0.3,
 		});
+		status.value = "준비 완료";
+	} catch (err: any) {
+		errorMsg.value = "AI 모델 로딩 실패: " + err.message;
+	}
+}
 
-		status.value = "카메라 연결 중...";
+// --- Camera Logic ---
+async function startCamera() {
+	if (stream) {
+		stream.getTracks().forEach((t) => t.stop());
+	}
+	try {
 		stream = await navigator.mediaDevices.getUserMedia({
-			video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+			video: {
+				width: { ideal: 1280 },
+				height: { ideal: 720 },
+				facingMode: "user",
+			},
 		});
 
 		if (videoRef.value) {
 			videoRef.value.srcObject = stream;
-			await videoRef.value.play();
-			status.value = "✓ 색상 감지 준비 완료";
-			renderLoop();
+			// video.play() is handled by autoplay
+			isCameraReady.value = true;
+			reset();
 		}
 	} catch (err: any) {
-		errorMsg.value = err.message || "오류 발생";
-		console.error(err);
+		errorMsg.value = "카메라 접근 실패: " + err.message;
+		isCameraReady.value = false;
 	}
 }
 
-function smoothRectFn(target: {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-}) {
-	if (smoothedRect.width === 0) {
-		smoothedRect = { ...target };
-		return target;
+function stopCamera() {
+	if (stream) {
+		stream.getTracks().forEach((t) => t.stop());
+		stream = null;
 	}
-	smoothedRect.x += (target.x - smoothedRect.x) * SMOOTHING_FACTOR;
-	smoothedRect.y += (target.y - smoothedRect.y) * SMOOTHING_FACTOR;
-	smoothedRect.width += (target.width - smoothedRect.width) * SMOOTHING_FACTOR;
-	smoothedRect.height +=
-		(target.height - smoothedRect.height) * SMOOTHING_FACTOR;
-	return smoothedRect;
+	isCameraReady.value = false;
 }
 
-function renderLoop() {
+// --- Capture & Analyze ---
+async function captureAndAnalyze() {
+	if (!poseLandmarker || !videoRef.value || !canvasRef.value) return;
+
+	isProcessing.value = true;
+	quizState.value = "idle";
+
 	const video = videoRef.value;
 	const canvas = canvasRef.value;
-
-	if (!video || !canvas || !poseLandmarker) return;
-
-	if (canvas.width !== video.videoWidth) {
-		canvas.width = video.videoWidth;
-		canvas.height = video.videoHeight;
-	}
-
-	const ctx = canvas.getContext("2d", { willReadFrequently: true });
+	const ctx = canvas.getContext("2d");
 	if (!ctx) return;
 
-	// 1. Draw Video
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+	// 1. Draw Video Frame to Canvas
+	canvas.width = video.videoWidth;
+	canvas.height = video.videoHeight;
+	const w = canvas.width;
+	const h = canvas.height;
+
+	ctx.save();
+	ctx.translate(w, 0);
+	ctx.scale(-1, 1);
+	ctx.drawImage(video, 0, 0, w, h);
+	ctx.restore();
 
 	// 2. Detect
-	if (video.currentTime !== lastVideoTime) {
-		lastVideoTime = video.currentTime;
-		const result = poseLandmarker.detectForVideo(video, performance.now());
+	try {
+		const result = await poseLandmarker.detect(canvas);
 
-		if (result.landmarks && result.landmarks.length > 0) {
-			lastLandmarks = result.landmarks[0]!;
-			missingFrames = 0;
-		} else {
-			missingFrames++;
-		}
-	}
+		// Default ROI (Center)
+		let roi = { x: w * 0.375, y: h * 0.375, w: w * 0.25, h: h * 0.25 };
 
-	// 3. Process
-	if (lastLandmarks && missingFrames < MAX_MISSING_FRAMES) {
-		const isStale = missingFrames > 0;
-		const landmarks = lastLandmarks;
+		if (
+			result.landmarks &&
+			result.landmarks.length > 0 &&
+			result.landmarks[0]
+		) {
+			const lm = result.landmarks[0];
+			const lSh = lm[11];
+			const rSh = lm[12];
+			const lHip = lm[23];
+			const rHip = lm[24];
 
-		const drawingUtils = new DrawingUtils(ctx);
-		drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
-			color: isStale ? "orange" : "rgba(0, 255, 0, 0.5)",
-			lineWidth: 2,
-		});
+			if (lSh && rSh && lHip && rHip) {
+				const cx = (lSh.x + rSh.x) / 2;
+				const shoulderW = Math.abs(lSh.x - rSh.x);
+				const shoulderY = (lSh.y + rSh.y) / 2;
+				const hipY = (lHip.y + rHip.y) / 2;
+				const torsoH = Math.abs(hipY - shoulderY);
 
-		// --- ROI Calculation: Inner Chest ---
-		const lSh = landmarks[11]; // Left Shoulder
-		const rSh = landmarks[12]; // Right Shoulder
-		const lHip = landmarks[23]; // Left Hip
-		const rHip = landmarks[24]; // Right Hip
-
-		if (lSh && rSh && lHip && rHip) {
-			// Calculate mid-shoulder point
-			const midShoulderX = (lSh.x + rSh.x) / 2;
-			const midShoulderY = (lSh.y + rSh.y) / 2;
-
-			// Calculate mid-hip point
-			const midHipY = (lHip.y + rHip.y) / 2;
-
-			// Torso dimensions
-			const shoulderWidth = Math.abs(lSh.x - rSh.x);
-			const torsoHeight = Math.abs(midHipY - midShoulderY);
-
-			// Define a small box in the CENTER of the upper chest
-			// We focus on the upper 40% of the torso, starting slightly below neck
-			const roiWidth = shoulderWidth * 0.3; // 30% of shoulder width
-			const roiHeight = torsoHeight * 0.3; // 30% of torso height
-
-			const centerX = midShoulderX;
-			const centerY = midShoulderY + torsoHeight * 0.2; // Shift down 20% from shoulders
-
-			const rectX = centerX - roiWidth / 2;
-			const rectY = centerY - roiHeight / 2;
-
-			// Convert to pixel coords
-			const targetRect = smoothRectFn({
-				x: rectX * canvas.width,
-				y: rectY * canvas.height,
-				width: roiWidth * canvas.width,
-				height: roiHeight * canvas.height,
-			});
-
-			// Draw ROI Box
-			ctx.strokeStyle = "#00FFFF";
-			ctx.lineWidth = 3;
-			ctx.strokeRect(
-				targetRect.x,
-				targetRect.y,
-				targetRect.width,
-				targetRect.height
-			);
-
-			// --- Color Analysis with K-Means ---
-			const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-			// Use K-Means to find dominant colors (k=3)
-			const dominantColors = extractDominantColors(
-				imageData,
-				Math.floor(targetRect.x),
-				Math.floor(targetRect.y),
-				Math.floor(targetRect.width),
-				Math.floor(targetRect.height),
-				3 // k=3
-			);
-
-			// Pick best color
-			if (dominantColors.length > 0) {
-				// Filter out 'Unknown' if we have other candidates
-				const validColors = dominantColors.filter(
-					(c) => c.label !== "알 수 없음"
-				);
-
-				// Pick confident color
-				const bestColor =
-					validColors.length > 0
-						? validColors.reduce((prev, current) =>
-								prev.confidence > current.confidence ? prev : current
-						  )
-						: dominantColors[0];
-
-				detectedColor.value = bestColor!;
-
-				// Draw result label
-				drawFlippedLabel(
-					ctx,
-					bestColor!,
-					targetRect.x,
-					targetRect.height + targetRect.y + 10
-				);
-
-				// Draw Sample Visualization (Small Circle inside box)
-				ctx.fillStyle = `rgb(${bestColor!.rgb.r}, ${bestColor!.rgb.g}, ${
-					bestColor!.rgb.b
-				})`;
-				ctx.beginPath();
-				ctx.arc(
-					targetRect.x + targetRect.width / 2,
-					targetRect.y + targetRect.height / 2,
-					8,
-					0,
-					Math.PI * 2
-				);
-				ctx.fill();
-				ctx.strokeStyle = "white";
-				ctx.lineWidth = 2;
-				ctx.stroke();
+				roi.w = shoulderW * 0.4 * w;
+				roi.h = torsoH * 0.4 * h;
+				roi.x = cx * w - roi.w / 2;
+				roi.y = shoulderY * h + torsoH * 0.2 * h;
 			}
 		}
 
-		if (isStale) {
-			drawFlippedText(ctx, "신호 보정 중...", canvas.width - 150, 40, "orange");
+		// 3. Color Extraction (Average Method - like quiz.html)
+		const imageData = ctx.getImageData(roi.x, roi.y, roi.w, roi.h);
+
+		// Use simple average analysis which proved more robust than K-Means
+		let best: ColorResult = analyzeRegionColor(imageData, 0, 0, roi.w, roi.h);
+
+		// 4. Final Fallback if still unknown (low s/v but hue exists?)
+		if (best.label === "알 수 없음") {
+			console.log("Low confidence/Unknown. Force classifying by Hue...");
+			const label = forceClassifyColor(best.hsv.h);
+			best = {
+				...best,
+				label,
+				confidence: 0.1,
+			};
 		}
-	} else {
-		lastLandmarks = null;
-		drawFlippedText(
-			ctx,
-			"목각인형을 비춰주세요",
-			canvas.width / 2,
-			canvas.height / 2,
-			"white",
-			true
-		);
+
+		if (best) {
+			detectedResult.value = best;
+			// Check Answer
+			if (best.label === CORRECT_ANSWER) {
+				quizState.value = "success";
+			} else {
+				quizState.value = "failure";
+			}
+		} else {
+			// Should strictly not happen with forceClassifyColor
+			quizState.value = "failure";
+		}
+	} catch (err: any) {
+		console.error(err);
+		errorMsg.value = "분석 오류: " + err.message;
+	} finally {
+		isProcessing.value = false;
 	}
-
-	animationId = requestAnimationFrame(renderLoop);
 }
 
-function drawFlippedLabel(
-	ctx: CanvasRenderingContext2D,
-	color: ColorResult,
-	x: number,
-	y: number
-) {
-	const style =
-		colorStyles.value[color.label] || colorStyles.value["알 수 없음"];
-
-	ctx.save();
-
-	const labelWidth = 140;
-	const labelHeight = 50;
-
-	// Boundary check
-	if (x < 0) x = 0;
-	if (x + labelWidth > ctx.canvas.width) x = ctx.canvas.width - labelWidth;
-	if (y + labelHeight > ctx.canvas.height) y = y - labelHeight - 20;
-
-	const centerX = x + labelWidth / 2;
-	const centerY = y + labelHeight / 2;
-
-	ctx.translate(centerX, centerY);
-	ctx.scale(-1, 1);
-	ctx.translate(-centerX, -centerY);
-
-	ctx.fillStyle = style.bg;
-	ctx.beginPath();
-	ctx.roundRect(x, y, labelWidth, labelHeight, 8);
-	ctx.fill();
-	ctx.strokeStyle = "white";
-	ctx.lineWidth = 2;
-	ctx.stroke();
-
-	ctx.fillStyle = style.text;
-	ctx.font = "bold 20px Pretendard, Arial";
-	ctx.textAlign = "center";
-	ctx.textBaseline = "middle";
-	ctx.fillText(color.label, centerX, centerY - 8);
-	ctx.font = "12px Pretendard, Arial";
-	ctx.fillText(
-		`${Math.round(color.confidence * 100)}% 정확도`,
-		centerX,
-		centerY + 12
-	);
-
-	ctx.restore();
-}
-
-function drawFlippedText(
-	ctx: CanvasRenderingContext2D,
-	text: string,
-	x: number,
-	y: number,
-	color: string,
-	center = false
-) {
-	ctx.save();
-	if (center) {
-		ctx.translate(x, y);
-		ctx.scale(-1, 1);
-		ctx.translate(-x, -y);
-		ctx.textAlign = "center";
-	} else {
-		const estWidth = ctx.measureText(text).width;
-		ctx.translate(x + estWidth / 2, y);
-		ctx.scale(-1, 1);
-		ctx.translate(-(x + estWidth / 2), -y);
+function reset() {
+	quizState.value = "idle";
+	detectedResult.value = null;
+	// Clear canvas to reveal video
+	const canvas = canvasRef.value;
+	const ctx = canvas?.getContext("2d");
+	if (canvas && ctx) {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
 	}
-
-	ctx.fillStyle = color;
-	ctx.font = "bold 20px Pretendard, sans-serif";
-	ctx.fillText(text, x, y);
-	ctx.restore();
 }
+
+// File Upload Support - Removed unused logic
 
 onMounted(() => {
-	initSystem();
+	initMediaPipe();
+	startCamera(); // Auto start
 });
 
 onUnmounted(() => {
-	if (animationId) cancelAnimationFrame(animationId);
-	if (stream) stream.getTracks().forEach((t) => t.stop());
-	if (poseLandmarker) poseLandmarker.close();
+	stopCamera();
 });
 </script>
 
 <template>
 	<div class="detector-container">
-		<h1 class="title">🧶 뜨개질 옷 색상 감지기</h1>
+		<h1 class="title">🔍 어울리는 옷을 찾아라!</h1>
 
-		<div class="status-bar">
-			<span>{{ status }}</span>
-		</div>
+		<!-- Camera/Canvas Wrapper -->
+		<div class="camera-wrapper">
+			<video
+				ref="videoRef"
+				playsinline
+				autoplay
+				muted
+				class="video-layer"
+			></video>
+			<canvas ref="canvasRef" class="canvas-layer"></canvas>
 
-		<!-- Error -->
-		<div v-if="errorMsg" class="error-banner">
-			{{ errorMsg }}
-		</div>
-
-		<!-- Video Canvas -->
-		<div class="video-container">
-			<video ref="videoRef" playsinline muted class="hidden-video"></video>
-			<canvas ref="canvasRef" class="mirror-canvas"></canvas>
-		</div>
-
-		<!-- Results -->
-		<div v-if="detectedColor" class="result-panel">
-			<div
-				class="main-badge"
-				:style="{
-					backgroundColor: colorStyles[detectedColor.label]?.bg || '#808080',
-					color: colorStyles[detectedColor.label]?.text || '#ffffff',
-				}"
-			>
-				{{ detectedColor.label }}
+			<!-- Guide Overlay -->
+			<div class="guide-overlay" v-if="quizState === 'idle'">
+				<svg viewBox="0 0 200 200" class="guide-svg">
+					<path
+						d="M 60 80 Q 100 80 140 80 L 140 180 L 60 180 Z"
+						fill="none"
+						stroke="white"
+						stroke-width="2"
+						stroke-dasharray="5,5"
+					/>
+					<circle
+						cx="100"
+						cy="50"
+						r="15"
+						fill="none"
+						stroke="white"
+						stroke-width="2"
+						stroke-dasharray="5,5"
+					/>
+				</svg>
 			</div>
 
-			<!-- Color Legend -->
-			<div class="legend-row">
-				<span
-					v-for="label in colorLabels"
-					:key="label"
-					class="legend-chip"
-					:style="{
-						backgroundColor: colorStyles[label].bg,
-						color: colorStyles[label].text,
-					}"
+			<!-- Processing Loader -->
+			<div v-if="isProcessing" class="loader">분석 중...</div>
+
+			<!-- Controls (Inside Wrapper) -->
+			<div class="controls" v-if="quizState === 'idle'">
+				<button
+					@click="captureAndAnalyze"
+					class="btn primary"
+					:disabled="isProcessing"
 				>
-					{{ label }}
-				</span>
-			</div>
-
-			<button @click="showDebug = !showDebug" class="debug-toggle">
-				{{ showDebug ? "정보 숨기기" : "상세 정보" }}
-			</button>
-
-			<!-- Debug -->
-			<div v-if="showDebug" class="debug-box">
-				<p>
-					RGB: {{ detectedColor.rgb.r }}, {{ detectedColor.rgb.g }},
-					{{ detectedColor.rgb.b }}
-				</p>
-				<p>
-					HSV: {{ Math.round(detectedColor.hsv.h) }},
-					{{ Math.round(detectedColor.hsv.s) }},
-					{{ Math.round(detectedColor.hsv.v) }}
-				</p>
+					📸 촬영 및 확인
+				</button>
 			</div>
 		</div>
+
+		<!-- Results Modal -->
+		<div v-if="quizState !== 'idle'" class="result-modal">
+			<div class="modal-content">
+				<!-- Success -->
+				<div v-if="quizState === 'success'" class="result-box success">
+					<div class="icon">🎉</div>
+					<h2>정답입니다!</h2>
+					<p>보라색 옷을 정확히 찾으셨네요.</p>
+					<div class="secret-msg">
+						<strong>🎁 숨겨진 메시지:</strong><br />
+						"당신은 색채의 마법사!"
+					</div>
+					<button @click="reset" class="btn">다시 하기</button>
+				</div>
+
+				<!-- Failure -->
+				<div v-if="quizState === 'failure'" class="result-box failure">
+					<div class="icon">🤔</div>
+					<h2>아쉽네요...</h2>
+					<p>
+						인식된 색상:
+						<span class="detected-color">{{
+							detectedResult?.label || "알 수 없음"
+						}}</span>
+					</p>
+					<div class="debug-hsv" v-if="detectedResult">
+						HSV: {{ Math.round(detectedResult.hsv.h) }},
+						{{ Math.round(detectedResult.hsv.s) }},
+						{{ Math.round(detectedResult.hsv.v) }}
+					</div>
+					<button @click="reset" class="btn secondary">다시 시도</button>
+				</div>
+			</div>
+		</div>
+
+		<div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
 	</div>
 </template>
 
 <style scoped>
+/* Centered Portrait Layout */
 .detector-container {
-	max-width: 600px;
-	margin: 0 auto;
-	padding: 10px;
+	width: 100%;
+	height: 100vh;
+	margin: 0;
+	padding: 0;
 	font-family: "Pretendard", sans-serif;
 	text-align: center;
-	color: white;
+	background: #ffffff; /* Page background */
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	position: relative;
+	overflow: hidden;
+}
+
+.camera-wrapper {
+	position: relative;
+	/* 85% Height, Portrait Ratio optimized */
+	height: 85vh;
+	aspect-ratio: 9/16;
+	max-width: 95vw;
+
+	background: black;
+	border-radius: 25px;
+	overflow: hidden;
+	box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
 }
 
 .title {
-	margin: 10px 0;
-	font-size: 1.5rem;
-	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.status-bar {
-	margin-bottom: 10px;
-	font-size: 0.95rem;
-	color: rgba(255, 255, 255, 0.8);
-}
-
-.video-container {
-	position: relative;
+	position: absolute;
+	top: 25px;
+	left: 0;
 	width: 100%;
-	aspect-ratio: 4/3;
-	background: #222;
-	border-radius: 16px;
-	overflow: hidden;
-	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-	margin-bottom: 20px;
+	text-align: center;
+	font-size: 1.3rem;
+	font-weight: bold;
+	color: white;
+	text-shadow: 0 2px 5px rgba(0, 0, 0, 0.7);
+	z-index: 10;
+	pointer-events: none;
+	margin: 0;
 }
 
-.hidden-video {
-	display: none;
-}
-
-.mirror-canvas {
+.video-layer,
+.canvas-layer {
+	position: absolute;
+	top: 0;
+	left: 0;
 	width: 100%;
 	height: 100%;
-	object-fit: contain;
-	transform: scaleX(-1); /* Mirror effect */
+	object-fit: cover;
+}
+.video-layer {
+	transform: scaleX(-1);
+}
+.canvas-layer {
+	z-index: 10;
 }
 
-.result-panel {
-	background: rgba(255, 255, 255, 0.95);
-	border-radius: 20px;
-	padding: 20px;
-	color: #333;
-	box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.main-badge {
-	display: inline-block;
-	padding: 10px 40px;
-	border-radius: 50px;
-	font-size: 2rem;
-	font-weight: 800;
-	margin-bottom: 15px;
-	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-	transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.legend-row {
+.guide-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 20;
+	pointer-events: none;
 	display: flex;
 	justify-content: center;
-	gap: 8px;
-	flex-wrap: wrap;
-	margin-bottom: 15px;
+	align-items: center;
+}
+.guide-svg {
+	width: 80%;
+	height: auto;
+	opacity: 0.8;
+	max-width: 400px;
 }
 
-.legend-chip {
-	font-size: 0.8rem;
-	padding: 6px 12px;
-	border-radius: 12px;
-	font-weight: 600;
-	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.debug-toggle {
-	background: none;
-	border: none;
-	color: #888;
-	font-size: 0.8rem;
-	cursor: pointer;
-	text-decoration: underline;
-}
-
-.debug-box {
-	margin-top: 10px;
-	padding: 10px;
-	background: #f1f2f6;
-	border-radius: 8px;
-	font-size: 0.85rem;
-	color: #555;
-	text-align: left;
-}
-
-.error-banner {
-	background: #ff4757;
+.loader {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: rgba(0, 0, 0, 0.7);
 	color: white;
-	padding: 10px;
-	border-radius: 8px;
-	margin-bottom: 10px;
+	padding: 10px 20px;
+	border-radius: 20px;
+	z-index: 50;
+	font-weight: bold;
+}
+
+.controls {
+	position: absolute;
+	bottom: 30px;
+	left: 0;
+	width: 100%;
+	z-index: 30;
+	display: flex;
+	justify-content: center;
+	padding: 0 20px;
+	box-sizing: border-box;
+}
+
+.controls .btn {
+	background: white;
+	color: black;
+	border: none;
+	padding: 16px 30px;
+	border-radius: 40px;
+	font-size: 1.1rem;
+	font-weight: bold;
+	cursor: pointer;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+	width: auto;
+	min-width: 200px;
+}
+.controls .btn:active {
+	transform: scale(0.98);
+}
+.controls .btn:disabled {
+	opacity: 0.7;
+	background: #ccc;
+}
+
+/* Modal */
+.result-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.5); /* Dimmed background */
+	z-index: 100;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 20px;
+	backdrop-filter: blur(5px);
+}
+
+.modal-content {
+	background: white;
+	padding: 30px;
+	border-radius: 25px;
+	width: 100%;
+	max-width: 320px;
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+	text-align: center;
+}
+
+.result-box {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 15px;
+	color: #333;
+}
+.icon {
+	font-size: 4rem;
+}
+h2 {
+	font-size: 1.6rem;
+	margin: 0;
+}
+p {
+	color: #666;
+	font-size: 1rem;
+	margin: 0;
+}
+
+.detected-color {
+	color: #e74c3c;
+	font-weight: bold;
+	font-size: 1.2rem;
+}
+
+.secret-msg {
+	background: #f8f9fa;
+	padding: 15px;
+	border-radius: 12px;
+	margin-bottom: 5px;
+	line-height: 1.5;
+	text-align: center;
+	width: 100%;
+	font-size: 0.95rem;
+}
+
+.btn {
+	padding: 14px 0;
+	border-radius: 15px;
+	font-size: 1rem;
+	font-weight: bold;
+	cursor: pointer;
+	border: none;
+	width: 100%;
+}
+.btn.secondary {
+	background: #f1f3f5;
+	color: #495057;
+}
+
+.debug-hsv {
+	font-size: 0.8rem;
+	color: #adb5bd;
+}
+
+.error-msg {
+	position: absolute;
+	top: 70px;
+	left: 0;
+	width: 100%;
+	color: #ff6b6b;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+	z-index: 50;
+	font-weight: bold;
 }
 </style>
