@@ -1,0 +1,5 @@
+# Vue Router(SPA)를 위한 리다이렉트 설정
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
