@@ -159,25 +159,26 @@ const reset = () => {
 
 .center-card {
 	background: white;
-	/* width: 100%; */
-	/* max-width: 500px; */
-	width: 500px;
-	height: 95%;
-	/* max-height: 1300px; */
+	width: 90%;
+	max-width: 500px;
+	height: auto;
+	max-height: 90vh;
+	min-height: 600px;
 	border-radius: 25px;
-	padding: 40px 40px;
+	padding: 40px;
 	border: 1px solid #eee;
 	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 	text-align: center;
 	position: relative;
-	overflow-y: hidden;
+	overflow-y: auto;
 	overflow-x: hidden;
 	display: flex;
 	flex-direction: column;
+	box-sizing: border-box;
 }
 
 .page-title {
-	font-size: 1.7rem;
+	font-size: clamp(1.3rem, 4vw, 1.7rem);
 	color: #2c3e50;
 	margin-bottom: 25px;
 	font-weight: 800;
@@ -224,8 +225,8 @@ const reset = () => {
 }
 
 .riddle-text {
-	font-size: 1.15rem;
-	line-height: 1.5;
+	font-size: clamp(0.95rem, 3vw, 1.15rem);
+	line-height: 1.6;
 	color: #555;
 	margin-bottom: 0;
 	word-break: keep-all;
@@ -242,9 +243,9 @@ const reset = () => {
 	margin-bottom: 35px;
 }
 .code-input {
-	width: 60px;
-	height: 60px;
-	font-size: 1.7rem;
+	width: clamp(50px, 12vw, 60px);
+	height: clamp(50px, 12vw, 60px);
+	font-size: clamp(1.3rem, 4vw, 1.7rem);
 	text-align: center;
 	border: 2px solid #eee;
 	border-radius: 12px;
@@ -252,6 +253,7 @@ const reset = () => {
 	color: #2c3e50;
 	transition: all 0.3s;
 	background: #fcfcfc;
+	box-sizing: border-box;
 	/* Remove Spin Buttons for Firefox */
 	-moz-appearance: textfield;
 }
@@ -284,10 +286,11 @@ const reset = () => {
 	color: white;
 	border: none;
 	border-radius: 12px;
-	font-size: 1.25rem;
+	font-size: clamp(1rem, 3.5vw, 1.25rem);
 	font-weight: bold;
 	cursor: pointer;
 	transition: background 0.2s;
+	box-sizing: border-box;
 }
 .action-btn:hover {
 	background: #2980b9;
@@ -326,7 +329,7 @@ const reset = () => {
 
 .success-content h2 {
 	margin: 10px 0 20px 0;
-	font-size: 1.6rem;
+	font-size: clamp(1.3rem, 4vw, 1.6rem);
 }
 
 .reward-box {
@@ -383,11 +386,12 @@ const reset = () => {
 /* Mobile Tweaks */
 @media (max-width: 480px) {
 	.center-card {
+		width: 95%;
 		border: none;
 		box-shadow: none;
 		padding: 30px 20px;
-		height: 95%;
-		max-height: none;
+		min-height: 500px;
+		max-height: 95vh;
 	}
 	.blue-box-page {
 		padding: 2%;
@@ -401,6 +405,14 @@ const reset = () => {
 		width: 90px;
 		height: 90px;
 		margin: 0 auto 15px;
+	}
+	.input-row {
+		gap: 8px;
+	}
+	.code-input {
+		width: 50px;
+		height: 50px;
+		font-size: 1.3rem;
 	}
 }
 </style>
