@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 
 const input1 = ref("");
 const input2 = ref("");
@@ -7,6 +7,8 @@ const input3 = ref("");
 const isSolved = ref(false);
 const errorMsg = ref("");
 
+// Template refs - used in template via ref attribute
+// @ts-ignore - TS6133: Used in template, not detected by TypeScript
 const inputRef1 = ref<HTMLInputElement | null>(null);
 const inputRef2 = ref<HTMLInputElement | null>(null);
 const inputRef3 = ref<HTMLInputElement | null>(null);
@@ -29,6 +31,13 @@ const handleInput = (currentInput: number, value: string) => {
 		input3.value = digit;
 	}
 };
+
+onMounted(() => {
+	// Auto-focus first input on mount
+	if (inputRef1.value) {
+		inputRef1.value.focus();
+	}
+});
 
 const checkAnswer = () => {
 	// Check for 3, 5, 8
