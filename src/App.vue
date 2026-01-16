@@ -12,26 +12,32 @@
 
 <style>
 /* Global Reset */
+html,
 body {
 	margin: 0;
-	height: 100vh;
+	padding: 0;
+	height: 100%;
+	width: 100%;
 	overflow: hidden;
+	position: fixed;
 }
 
 #app {
-	height: 100vh;
+	height: 100%;
 	width: 100%;
 	background: #ffffff;
 	font-family: "Pretendard", sans-serif;
 	color: #333;
 	overflow: hidden;
+	position: relative;
 }
 
 .app-layout {
 	display: flex;
 	flex-direction: column;
-	height: 100vh;
+	height: 100%;
 	width: 100%;
+	position: relative;
 }
 
 .page-container {
@@ -41,5 +47,6 @@ body {
 	align-items: center;
 	width: 100%;
 	height: 100%;
+	overflow: hidden;
 }
 </style>

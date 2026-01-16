@@ -301,7 +301,7 @@ onUnmounted(() => {
 	width: 100%;
 	height: 100%;
 	margin: 0;
-	padding: 20px 0;
+	padding: 3% 0;
 	font-family: "Pretendard", sans-serif;
 	text-align: center;
 	background: #ffffff; /* Page background */
@@ -316,8 +316,9 @@ onUnmounted(() => {
 
 .camera-wrapper {
 	position: relative;
-	/* 80% Height, wider Portrait Ratio optimized */
-	height: 80%;
+	/* 85% Height, wider Portrait Ratio optimized */
+	height: 85%;
+	max-height: 90%;
 	aspect-ratio: 3/4;
 	max-width: 90%;
 

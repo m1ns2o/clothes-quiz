@@ -151,24 +151,26 @@ const reset = () => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	padding: 20px;
+	padding: 3%;
 	box-sizing: border-box;
 	overflow: hidden;
+	position: relative;
 }
 
 .center-card {
 	background: white;
 	width: 100%;
 	max-width: 500px;
-	height: 85%;
-	min-height: 600px;
+	height: 90%;
+	/* max-height: 1300px; */
 	border-radius: 25px;
 	padding: 40px 40px;
 	border: 1px solid #eee;
 	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 	text-align: center;
 	position: relative;
-	overflow-y: auto;
+	overflow-y: hidden;
+	overflow-x: hidden;
 	display: flex;
 	flex-direction: column;
 }
@@ -382,11 +384,22 @@ const reset = () => {
 	.center-card {
 		border: none;
 		box-shadow: none;
-		padding: 20px 0;
+		padding: 30px 20px;
+		height: 95%;
+		max-height: none;
 	}
 	.blue-box-page {
-		padding: 15px;
-		align-items: flex-start; /* Move to top on mobile */
+		padding: 2%;
+		align-items: center;
+	}
+	.page-title {
+		font-size: 1.3rem;
+		margin-bottom: 20px;
+	}
+	.box-visual {
+		width: 90px;
+		height: 90px;
+		margin: 0 auto 15px;
 	}
 }
 </style>
