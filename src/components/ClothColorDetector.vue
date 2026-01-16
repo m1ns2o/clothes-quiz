@@ -301,13 +301,13 @@ onUnmounted(() => {
 	width: 100%;
 	height: 100%;
 	margin: 0;
-	padding: 3% 0;
+	/* padding: 3% 0; */
 	font-family: "Pretendard", sans-serif;
 	text-align: center;
 	background: #ffffff; /* Page background */
 	display: flex;
 	flex-direction: column;
-	justify-content: center;
+	/* justify-content: center; */
 	align-items: center;
 	position: relative;
 	overflow: hidden;
@@ -329,10 +329,10 @@ onUnmounted(() => {
 }
 
 .title {
-	font-size: 1.3rem;
+	font-size: 2rem;
 	font-weight: bold;
 	color: #2c3e50;
-	margin: 0 0 20px 0;
+	/* margin: 0 0 20px 0; */
 }
 
 .video-layer,

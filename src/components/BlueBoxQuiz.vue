@@ -159,9 +159,10 @@ const reset = () => {
 
 .center-card {
 	background: white;
-	width: 100%;
-	max-width: 500px;
-	height: 90%;
+	/* width: 100%; */
+	/* max-width: 500px; */
+	width: 500px;
+	height: 95%;
 	/* max-height: 1300px; */
 	border-radius: 25px;
 	padding: 40px 40px;
@@ -176,7 +177,7 @@ const reset = () => {
 }
 
 .page-title {
-	font-size: 1.5rem;
+	font-size: 1.7rem;
 	color: #2c3e50;
 	margin-bottom: 25px;
 	font-weight: 800;
@@ -223,7 +224,7 @@ const reset = () => {
 }
 
 .riddle-text {
-	font-size: 1rem;
+	font-size: 1.15rem;
 	line-height: 1.5;
 	color: #555;
 	margin-bottom: 0;
@@ -243,7 +244,7 @@ const reset = () => {
 .code-input {
 	width: 60px;
 	height: 60px;
-	font-size: 1.5rem;
+	font-size: 1.7rem;
 	text-align: center;
 	border: 2px solid #eee;
 	border-radius: 12px;
@@ -283,7 +284,7 @@ const reset = () => {
 	color: white;
 	border: none;
 	border-radius: 12px;
-	font-size: 1.1rem;
+	font-size: 1.25rem;
 	font-weight: bold;
 	cursor: pointer;
 	transition: background 0.2s;
@@ -299,7 +300,7 @@ const reset = () => {
 .error-message {
 	margin-top: 20px;
 	color: #e74c3c;
-	font-size: 0.9rem;
+	font-size: 1rem;
 	opacity: 0;
 	transition: opacity 0.3s;
 	min-height: 20px;
@@ -325,7 +326,7 @@ const reset = () => {
 
 .success-content h2 {
 	margin: 10px 0 20px 0;
-	font-size: 1.4rem;
+	font-size: 1.6rem;
 }
 
 .reward-box {
@@ -338,11 +339,11 @@ const reset = () => {
 
 .reward-desc {
 	margin: 5px 0;
-	font-size: 0.95rem;
+	font-size: 1.05rem;
 }
 
 .reward-item {
-	font-size: 1.3rem;
+	font-size: 1.5rem;
 	font-weight: 800;
 	color: #2980b9;
 	margin: 8px 0;
@@ -356,7 +357,7 @@ const reset = () => {
 	line-height: 1.4;
 	text-align: center;
 	width: 100%;
-	font-size: 0.9rem;
+	font-size: 1.05rem;
 }
 
 @keyframes bounce {
@@ -393,7 +394,7 @@ const reset = () => {
 		align-items: center;
 	}
 	.page-title {
-		font-size: 1.3rem;
+		font-size: 1.5rem;
 		margin-bottom: 20px;
 	}
 	.box-visual {
