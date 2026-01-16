@@ -162,8 +162,8 @@ const reset = () => {
 	width: 90%;
 	max-width: 500px;
 	height: auto;
-	max-height: 90vh;
-	min-height: 600px;
+	max-height: 90%;
+	min-height: min(600px, 85%);
 	border-radius: 25px;
 	padding: 40px;
 	border: 1px solid #eee;
@@ -390,8 +390,8 @@ const reset = () => {
 		border: none;
 		box-shadow: none;
 		padding: 30px 20px;
-		min-height: 500px;
-		max-height: 95vh;
+		min-height: min(500px, 80%);
+		max-height: 95%;
 	}
 	.blue-box-page {
 		padding: 2%;
