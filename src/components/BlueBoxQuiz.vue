@@ -7,13 +7,32 @@ const input3 = ref("");
 const isSolved = ref(false);
 const errorMsg = ref("");
 
+const inputRef1 = ref<HTMLInputElement | null>(null);
+const inputRef2 = ref<HTMLInputElement | null>(null);
+const inputRef3 = ref<HTMLInputElement | null>(null);
+
+const handleInput = (currentInput: number, value: string) => {
+	// Allow only single digit
+	const digit = value.replace(/[^0-9]/g, "").slice(0, 1);
+
+	if (currentInput === 1) {
+		input1.value = digit;
+		if (digit && inputRef2.value) {
+			inputRef2.value.focus();
+		}
+	} else if (currentInput === 2) {
+		input2.value = digit;
+		if (digit && inputRef3.value) {
+			inputRef3.value.focus();
+		}
+	} else if (currentInput === 3) {
+		input3.value = digit;
+	}
+};
+
 const checkAnswer = () => {
 	// Check for 3, 5, 8
-	if (
-		input1.value.trim() === "3" &&
-		input2.value.trim() === "5" &&
-		input3.value.trim() === "8"
-	) {
+	if (input1.value === "3" && input2.value === "5" && input3.value === "8") {
 		isSolved.value = true;
 		errorMsg.value = "";
 	} else {
@@ -57,25 +76,31 @@ const reset = () => {
 
 					<div class="input-row">
 						<input
-							v-model="input1"
-							type="number"
+							ref="inputRef1"
+							:value="input1"
+							@input="(e) => handleInput(1, (e.target as HTMLInputElement).value)"
+							type="text"
+							inputmode="numeric"
 							class="code-input"
 							placeholder="?"
-							maxlength="1"
 						/>
 						<input
-							v-model="input2"
-							type="number"
+							ref="inputRef2"
+							:value="input2"
+							@input="(e) => handleInput(2, (e.target as HTMLInputElement).value)"
+							type="text"
+							inputmode="numeric"
 							class="code-input"
 							placeholder="?"
-							maxlength="1"
 						/>
 						<input
-							v-model="input3"
-							type="number"
+							ref="inputRef3"
+							:value="input3"
+							@input="(e) => handleInput(3, (e.target as HTMLInputElement).value)"
+							type="text"
+							inputmode="numeric"
 							class="code-input"
 							placeholder="?"
-							maxlength="1"
 						/>
 					</div>
 
@@ -91,9 +116,14 @@ const reset = () => {
 					<div class="footprint-visual">🐾</div>
 					<h2>상자가 열렸습니다!</h2>
 					<div class="reward-box">
-						<p class="reward-desc">상자 안에는 전설 속의</p>
-						<p class="reward-item">"토끼 대왕의 발자국"</p>
-						<p class="reward-desc">이 찍혀있었습니다.</p>
+						<p class="reward-desc">숫자 힌트</p>
+						<p class="reward-item">5</p>
+						<!-- <p class="reward-desc">이 찍혀있었습니다.</p> -->
+					</div>
+
+					<div class="secret-msg">
+						<strong>🎁 숨겨진 메시지:</strong><br />
+						다음 단계로 이동하세요!
 					</div>
 
 					<button @click="reset" class="action-btn secondary">
@@ -108,38 +138,52 @@ const reset = () => {
 <style scoped>
 .blue-box-page {
 	width: 100%;
-	min-height: 100vh;
+	height: 100%;
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	padding: 20px;
 	box-sizing: border-box;
+	overflow: hidden;
 }
 
 .center-card {
 	background: white;
 	width: 100%;
-	max-width: 400px;
+	max-width: 500px;
+	height: 85%;
+	min-height: 600px;
 	border-radius: 25px;
-	padding: 40px 30px;
+	padding: 40px 40px;
 	border: 1px solid #eee;
 	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 	text-align: center;
 	position: relative;
-	overflow: hidden;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
 }
 
 .page-title {
 	font-size: 1.5rem;
 	color: #2c3e50;
-	margin-bottom: 30px;
+	margin-bottom: 25px;
 	font-weight: 800;
+	flex-shrink: 0;
 }
 
 /* Visuals */
+.quiz-content {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	height: 100%;
+	padding: 20px 0;
+}
+
 .box-visual {
-	width: 120px;
-	height: 120px;
+	width: 110px;
+	height: 110px;
 	background: #3498db;
 	margin: 0 auto 25px;
 	border-radius: 15px;
@@ -163,11 +207,15 @@ const reset = () => {
 	border-radius: 15px 15px 0 0;
 }
 
-.riddle-text {
-	font-size: 1.05rem;
-	line-height: 1.6;
-	color: #555;
+.riddle-container {
 	margin-bottom: 25px;
+}
+
+.riddle-text {
+	font-size: 1rem;
+	line-height: 1.5;
+	color: #555;
+	margin-bottom: 0;
 	word-break: keep-all;
 }
 .riddle-text strong {
@@ -179,7 +227,7 @@ const reset = () => {
 	display: flex;
 	justify-content: center;
 	gap: 12px;
-	margin-bottom: 30px;
+	margin-bottom: 35px;
 }
 .code-input {
 	width: 60px;
@@ -238,7 +286,7 @@ const reset = () => {
 
 /* Feedback */
 .error-message {
-	margin-top: 15px;
+	margin-top: 20px;
 	color: #e74c3c;
 	font-size: 0.9rem;
 	opacity: 0;
@@ -250,23 +298,54 @@ const reset = () => {
 }
 
 /* Success State */
+.success-content {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	height: 100%;
+	padding: 20px 0;
+}
+
 .footprint-visual {
-	font-size: 5rem;
-	margin: 20px 0;
+	font-size: 4rem;
+	margin: 15px 0 20px 0;
 	animation: bounce 2s infinite;
 }
+
+.success-content h2 {
+	margin: 10px 0 20px 0;
+	font-size: 1.4rem;
+}
+
 .reward-box {
 	background: #f0f8ff;
-	padding: 20px;
+	padding: 18px;
 	border-radius: 15px;
-	margin: 20px 0 30px;
+	margin: 0 0 20px 0;
 	border: 2px dashed #a2d2ff;
 }
+
+.reward-desc {
+	margin: 5px 0;
+	font-size: 0.95rem;
+}
+
 .reward-item {
-	font-size: 1.4rem;
+	font-size: 1.3rem;
 	font-weight: 800;
 	color: #2980b9;
-	margin: 10px 0;
+	margin: 8px 0;
+}
+
+.secret-msg {
+	background: #f8f9fa;
+	padding: 12px;
+	border-radius: 12px;
+	margin-bottom: 20px;
+	line-height: 1.4;
+	text-align: center;
+	width: 100%;
+	font-size: 0.9rem;
 }
 
 @keyframes bounce {

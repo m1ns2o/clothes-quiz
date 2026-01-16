@@ -258,12 +258,17 @@ onUnmounted(() => {
 				<div v-if="quizState === 'success'" class="result-box success">
 					<div class="icon">🎉</div>
 					<h2>정답입니다!</h2>
-					<p>보라색 옷을 정확히 찾으셨네요.</p>
+					<p>
+						인식된 색상:
+						<span class="detected-color">{{
+							detectedResult?.label || "알 수 없음"
+						}}</span>
+					</p>
 					<div class="secret-msg">
 						<strong>🎁 숨겨진 메시지:</strong><br />
-						"당신은 색채의 마법사!"
+						힌트는 숫자 5
 					</div>
-					<button @click="reset" class="btn">다시 하기</button>
+					<!-- <button @click="reset" class="btn">다시 하기</button> -->
 				</div>
 
 				<!-- Failure -->
@@ -294,9 +299,9 @@ onUnmounted(() => {
 /* Centered Portrait Layout */
 .detector-container {
 	width: 100%;
-	height: 100vh;
+	height: 100%;
 	margin: 0;
-	padding: 0;
+	padding: 20px 0;
 	font-family: "Pretendard", sans-serif;
 	text-align: center;
 	background: #ffffff; /* Page background */
@@ -306,14 +311,15 @@ onUnmounted(() => {
 	align-items: center;
 	position: relative;
 	overflow: hidden;
+	box-sizing: border-box;
 }
 
 .camera-wrapper {
 	position: relative;
-	/* 85% Height, Portrait Ratio optimized */
-	height: 85vh;
-	aspect-ratio: 9/16;
-	max-width: 95vw;
+	/* 80% Height, wider Portrait Ratio optimized */
+	height: 80%;
+	aspect-ratio: 3/4;
+	max-width: 90%;
 
 	background: black;
 	border-radius: 25px;
@@ -322,18 +328,10 @@ onUnmounted(() => {
 }
 
 .title {
-	position: absolute;
-	top: 25px;
-	left: 0;
-	width: 100%;
-	text-align: center;
 	font-size: 1.3rem;
 	font-weight: bold;
-	color: white;
-	text-shadow: 0 2px 5px rgba(0, 0, 0, 0.7);
-	z-index: 10;
-	pointer-events: none;
-	margin: 0;
+	color: #2c3e50;
+	margin: 0 0 20px 0;
 }
 
 .video-layer,

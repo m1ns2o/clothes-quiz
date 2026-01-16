@@ -14,19 +14,24 @@
 /* Global Reset */
 body {
 	margin: 0;
+	height: 100vh;
+	overflow: hidden;
 }
 
 #app {
-	min-height: 100vh;
+	height: 100vh;
+	width: 100%;
 	background: #ffffff;
 	font-family: "Pretendard", sans-serif;
 	color: #333;
+	overflow: hidden;
 }
 
 .app-layout {
 	display: flex;
 	flex-direction: column;
-	min-height: 100vh;
+	height: 100vh;
+	width: 100%;
 }
 
 .page-container {
@@ -34,5 +39,7 @@ body {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	width: 100%;
+	height: 100%;
 }
 </style>
