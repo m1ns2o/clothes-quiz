@@ -159,10 +159,10 @@ const reset = () => {
 
 .center-card {
 	background: white;
-	width: 90%;
-	max-width: 500px;
+	width: 80%;
+	max-width: 450px;
 	border-radius: 25px;
-	padding: 40px;
+	padding: 30px;
 	border: 1px solid #eee;
 	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 	text-align: center;
@@ -176,7 +176,7 @@ const reset = () => {
 .page-title {
 	font-size: clamp(1.3rem, 4vw, 1.7rem);
 	color: #2c3e50;
-	margin-bottom: 25px;
+	margin-bottom: 20px;
 	font-weight: 800;
 	flex-shrink: 0;
 }
@@ -187,14 +187,14 @@ const reset = () => {
 	flex-direction: column;
 	justify-content: center;
 	height: 100%;
-	padding: 20px 0;
+	padding: 10px 0;
 }
 
 .box-visual {
-	width: 110px;
-	height: 110px;
+	width: 90px;
+	height: 90px;
 	background: #3498db;
-	margin: 0 auto 25px;
+	margin: 0 auto 18px;
 	border-radius: 15px;
 	position: relative;
 	box-shadow: 0 10px 20px rgba(52, 152, 219, 0.4);
@@ -217,7 +217,7 @@ const reset = () => {
 }
 
 .riddle-container {
-	margin-bottom: 25px;
+	margin-bottom: 18px;
 }
 
 .riddle-text {
@@ -236,7 +236,7 @@ const reset = () => {
 	display: flex;
 	justify-content: center;
 	gap: 12px;
-	margin-bottom: 35px;
+	margin-bottom: 25px;
 }
 .code-input {
 	width: clamp(50px, 12vw, 60px);
@@ -297,7 +297,7 @@ const reset = () => {
 
 /* Feedback */
 .error-message {
-	margin-top: 20px;
+	margin-top: 15px;
 	color: #e74c3c;
 	font-size: 1rem;
 	opacity: 0;
@@ -314,25 +314,25 @@ const reset = () => {
 	flex-direction: column;
 	justify-content: center;
 	height: 100%;
-	padding: 20px 0;
+	padding: 10px 0;
 }
 
 .footprint-visual {
-	font-size: 4rem;
-	margin: 15px 0 20px 0;
+	font-size: 3.5rem;
+	margin: 10px 0 15px 0;
 	animation: bounce 2s infinite;
 }
 
 .success-content h2 {
-	margin: 10px 0 20px 0;
+	margin: 8px 0 15px 0;
 	font-size: clamp(1.3rem, 4vw, 1.6rem);
 }
 
 .reward-box {
 	background: #f0f8ff;
-	padding: 18px;
+	padding: 15px;
 	border-radius: 15px;
-	margin: 0 0 20px 0;
+	margin: 0 0 15px 0;
 	border: 2px dashed #a2d2ff;
 }
 
@@ -352,7 +352,7 @@ const reset = () => {
 	background: #f8f9fa;
 	padding: 12px;
 	border-radius: 12px;
-	margin-bottom: 20px;
+	margin-bottom: 15px;
 	line-height: 1.4;
 	text-align: center;
 	width: 100%;
@@ -382,31 +382,32 @@ const reset = () => {
 /* Mobile Tweaks */
 @media (max-width: 480px) {
 	.center-card {
-		width: 95%;
+		width: 85%;
 		border: none;
 		box-shadow: none;
-		padding: 30px 20px;
+		padding: 25px 18px;
 	}
 	.blue-box-page {
 		padding: 2%;
 		align-items: center;
 	}
 	.page-title {
-		font-size: 1.5rem;
-		margin-bottom: 20px;
+		font-size: 1.4rem;
+		margin-bottom: 15px;
 	}
 	.box-visual {
-		width: 90px;
-		height: 90px;
-		margin: 0 auto 15px;
+		width: 80px;
+		height: 80px;
+		margin: 0 auto 12px;
 	}
 	.input-row {
 		gap: 8px;
+		margin-bottom: 20px;
 	}
 	.code-input {
-		width: 50px;
-		height: 50px;
-		font-size: 1.3rem;
+		width: 48px;
+		height: 48px;
+		font-size: 1.2rem;
 	}
 }
 </style>
