@@ -147,13 +147,13 @@ const reset = () => {
 <style scoped>
 .blue-box-page {
 	width: 100%;
-	height: 100%;
+	min-height: 100%;
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	padding: 3%;
 	box-sizing: border-box;
-	overflow: hidden;
+	overflow: auto;
 	position: relative;
 }
 
@@ -161,17 +161,13 @@ const reset = () => {
 	background: white;
 	width: 90%;
 	max-width: 500px;
-	height: auto;
-	max-height: 90%;
-	min-height: min(600px, 85%);
 	border-radius: 25px;
 	padding: 40px;
 	border: 1px solid #eee;
 	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 	text-align: center;
 	position: relative;
-	overflow-y: auto;
-	overflow-x: hidden;
+	overflow: visible;
 	display: flex;
 	flex-direction: column;
 	box-sizing: border-box;
@@ -390,8 +386,6 @@ const reset = () => {
 		border: none;
 		box-shadow: none;
 		padding: 30px 20px;
-		min-height: min(500px, 80%);
-		max-height: 95%;
 	}
 	.blue-box-page {
 		padding: 2%;
