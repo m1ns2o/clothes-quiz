@@ -7,7 +7,7 @@ import {
 	type ColorResult,
 } from "../utils/colorClassifier";
 
-const CORRECT_ANSWER = "보라색";
+const CORRECT_ANSWER = "빨간색";
 
 // Basic refs
 const videoRef = ref<HTMLVideoElement | null>(null);
@@ -21,6 +21,7 @@ const isCameraReady = ref(false);
 const isProcessing = ref(false);
 const quizState = ref<"idle" | "success" | "failure">("idle");
 const detectedResult = ref<ColorResult | null>(null);
+
 
 let poseLandmarker: PoseLandmarker | null = null;
 let stream: MediaStream | null = null;
@@ -258,48 +259,21 @@ onUnmounted(() => {
 				<div v-if="quizState === 'success'" class="result-box success">
 					<div class="icon">🎉</div>
 					<h2>정답입니다!</h2>
-					<p>
-						인식된 색상:
-						<span class="detected-color">{{
-							detectedResult?.label || "알 수 없음"
-						}}</span>
-					</p>
-					<div v-if="!isSolved" class="quiz-content" key="quiz">
-						<div class="box-visual">
-							<div class="lid"></div>
-							<div class="box-body">
-								<span class="lock">🔒</span>
-							</div>
-						</div>
 
-						<div class="riddle-container">
-							<p class="riddle-text">
-								"의복에서의 이상적인 <strong>황금 비율</strong>과 관련된<br />
-								<strong>3가지 숫자</strong>"
-							</p>
-						</div>
-
-						<div class="input-row">
-							<input
-								type="text"
-								inputmode="numeric"
-								class="code-input"
-								placeholder="?"
-							/>
-							<input
-								type="text"
-								inputmode="numeric"
-								class="code-input"
-								placeholder="?"
-							/>
-							<input
-								type="text"
-								inputmode="numeric"
-								class="code-input"
-								placeholder="?"
-							/>
-						</div>
+					<div class="secret-msg">
+						<div>아주 멋지게 스타일링을 해주었군~!</div>
+						<div>파란색 상자를 여는 힌트를 주지,</div>
+						<div>"의복에서의 이상적인 황금 비율과 관련된 3가지 숫자를 입력해봐"</div>
+						<div>파란색 상자를 열면 토끼 대왕의 발자국을 찾을 수 있을거야!</div>
 					</div>
+
+					<a
+						href="https://sites.google.com/view/gajeonglove77/B1"
+						target="_blank"
+						class="action-btn clue-btn"
+					>
+						B1의 단서
+					</a>
 				</div>
 
 				<!-- Failure -->
@@ -468,7 +442,7 @@ onUnmounted(() => {
 	padding: 30px;
 	border-radius: 25px;
 	width: 100%;
-	max-width: 320px;
+	max-width: 500px;
 	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 	text-align: center;
 }
@@ -501,13 +475,15 @@ p {
 
 .secret-msg {
 	background: #f8f9fa;
-	padding: 15px;
+	padding: 20px;
 	border-radius: 12px;
-	margin-bottom: 5px;
-	line-height: 1.5;
-	text-align: center;
+	margin-bottom: 20px;
+	line-height: 1.8;
+	text-align: left;
 	width: 100%;
-	font-size: 0.95rem;
+	font-size: 1.05rem;
+	color: #333;
+	white-space: pre-line;
 }
 
 .btn {
@@ -669,12 +645,26 @@ p {
 	cursor: pointer;
 	transition: background 0.2s;
 	box-sizing: border-box;
+	text-decoration: none;
+	display: inline-block;
 }
 .action-btn:hover {
 	background: #2980b9;
 }
 .action-btn.secondary {
 	background: #95a5a6;
+}
+.action-btn.clue-btn {
+	background: #2ecc71;
+	margin-bottom: 15px;
+	font-size: 1.3rem;
+	padding: 18px;
+	box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+}
+.action-btn.clue-btn:hover {
+	background: #27ae60;
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
 }
 
 /* Feedback */
