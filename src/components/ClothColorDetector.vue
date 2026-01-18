@@ -264,11 +264,42 @@ onUnmounted(() => {
 							detectedResult?.label || "알 수 없음"
 						}}</span>
 					</p>
-					<div class="secret-msg">
-						<strong>🎁 숨겨진 메시지:</strong><br />
-						힌트는 숫자 5
+					<div v-if="!isSolved" class="quiz-content" key="quiz">
+						<div class="box-visual">
+							<div class="lid"></div>
+							<div class="box-body">
+								<span class="lock">🔒</span>
+							</div>
+						</div>
+
+						<div class="riddle-container">
+							<p class="riddle-text">
+								"의복에서의 이상적인 <strong>황금 비율</strong>과 관련된<br />
+								<strong>3가지 숫자</strong>"
+							</p>
+						</div>
+
+						<div class="input-row">
+							<input
+								type="text"
+								inputmode="numeric"
+								class="code-input"
+								placeholder="?"
+							/>
+							<input
+								type="text"
+								inputmode="numeric"
+								class="code-input"
+								placeholder="?"
+							/>
+							<input
+								type="text"
+								inputmode="numeric"
+								class="code-input"
+								placeholder="?"
+							/>
+						</div>
 					</div>
-					<!-- <button @click="reset" class="btn">다시 하기</button> -->
 				</div>
 
 				<!-- Failure -->
@@ -507,5 +538,258 @@ p {
 	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 	z-index: 50;
 	font-weight: bold;
+}
+.center-card {
+	background: white;
+	width: 80%;
+	max-width: 450px;
+	border-radius: 25px;
+	padding: 30px;
+	border: 1px solid #eee;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+	text-align: center;
+	position: relative;
+	overflow: visible;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+}
+
+.page-title {
+	font-size: clamp(1.3rem, 4vw, 1.7rem);
+	color: #2c3e50;
+	margin-bottom: 20px;
+	font-weight: 800;
+	flex-shrink: 0;
+}
+
+/* Visuals */
+.quiz-content {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	height: 100%;
+	padding: 10px 0;
+}
+
+.box-visual {
+	width: 90px;
+	height: 90px;
+	background: #3498db;
+	margin: 0 auto 18px;
+	border-radius: 15px;
+	position: relative;
+	box-shadow: 0 10px 20px rgba(52, 152, 219, 0.4);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.box-body {
+	font-size: 3rem;
+	color: white;
+}
+.lid {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 20px;
+	background: #2980b9;
+	border-radius: 15px 15px 0 0;
+}
+
+.riddle-container {
+	margin-bottom: 18px;
+}
+
+.riddle-text {
+	font-size: clamp(0.95rem, 3vw, 1.15rem);
+	line-height: 1.6;
+	color: #555;
+	margin-bottom: 0;
+	word-break: keep-all;
+}
+.riddle-text strong {
+	color: #2980b9;
+}
+
+/* Inputs */
+.input-row {
+	display: flex;
+	justify-content: center;
+	gap: 12px;
+	margin-bottom: 25px;
+}
+.code-input {
+	width: clamp(50px, 12vw, 60px);
+	height: clamp(50px, 12vw, 60px);
+	font-size: clamp(1.3rem, 4vw, 1.7rem);
+	text-align: center;
+	border: 2px solid #eee;
+	border-radius: 12px;
+	font-weight: bold;
+	color: #2c3e50;
+	transition: all 0.3s;
+	background: #fcfcfc;
+	box-sizing: border-box;
+	/* Remove Spin Buttons for Firefox */
+	-moz-appearance: textfield;
+}
+
+/* Remove Spin Buttons for Chrome, Safari, Edge, Opera */
+.code-input::-webkit-outer-spin-button,
+.code-input::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+.code-input::placeholder {
+	text-align: center;
+	color: #ccc;
+	font-weight: normal;
+}
+.code-input:focus {
+	border-color: #3498db;
+	outline: none;
+	background: white;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 10px rgba(52, 152, 219, 0.1);
+}
+
+/* Buttons */
+.action-btn {
+	width: 100%;
+	padding: 16px;
+	background: #3498db;
+	color: white;
+	border: none;
+	border-radius: 12px;
+	font-size: clamp(1rem, 3.5vw, 1.25rem);
+	font-weight: bold;
+	cursor: pointer;
+	transition: background 0.2s;
+	box-sizing: border-box;
+}
+.action-btn:hover {
+	background: #2980b9;
+}
+.action-btn.secondary {
+	background: #95a5a6;
+}
+
+/* Feedback */
+.error-message {
+	margin-top: 15px;
+	color: #e74c3c;
+	font-size: 1rem;
+	opacity: 0;
+	transition: opacity 0.3s;
+	min-height: 20px;
+}
+.error-message.visible {
+	opacity: 1;
+}
+
+/* Success State */
+.success-content {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	height: 100%;
+	padding: 10px 0;
+}
+
+.footprint-visual {
+	font-size: 3.5rem;
+	margin: 10px 0 15px 0;
+	animation: bounce 2s infinite;
+}
+
+.success-content h2 {
+	margin: 8px 0 15px 0;
+	font-size: clamp(1.3rem, 4vw, 1.6rem);
+}
+
+.reward-box {
+	background: #f0f8ff;
+	padding: 15px;
+	border-radius: 15px;
+	margin: 0 0 15px 0;
+	border: 2px dashed #a2d2ff;
+}
+
+.reward-desc {
+	margin: 5px 0;
+	font-size: 1.05rem;
+}
+
+.reward-item {
+	font-size: 1.5rem;
+	font-weight: 800;
+	color: #2980b9;
+	margin: 8px 0;
+}
+
+.secret-msg {
+	background: #f8f9fa;
+	padding: 12px;
+	border-radius: 12px;
+	margin-bottom: 15px;
+	line-height: 1.4;
+	text-align: center;
+	width: 100%;
+	font-size: 1.05rem;
+}
+
+@keyframes bounce {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-10px);
+	}
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+	transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+	opacity: 0;
+}
+
+/* Mobile Tweaks */
+@media (max-width: 480px) {
+	.center-card {
+		width: 85%;
+		border: none;
+		box-shadow: none;
+		padding: 25px 18px;
+	}
+	.blue-box-page {
+		padding: 2%;
+		align-items: center;
+	}
+	.page-title {
+		font-size: 1.4rem;
+		margin-bottom: 15px;
+	}
+	.box-visual {
+		width: 80px;
+		height: 80px;
+		margin: 0 auto 12px;
+	}
+	.input-row {
+		gap: 8px;
+		margin-bottom: 20px;
+	}
+	.code-input {
+		width: 48px;
+		height: 48px;
+		font-size: 1.2rem;
+	}
 }
 </style>
