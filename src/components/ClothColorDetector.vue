@@ -21,6 +21,7 @@ const isCameraReady = ref(false);
 const isProcessing = ref(false);
 const quizState = ref<"idle" | "success" | "failure">("idle");
 const detectedResult = ref<ColorResult | null>(null);
+const facingMode = ref<"user" | "environment">("environment"); // Default to rear camera
 
 
 let poseLandmarker: PoseLandmarker | null = null;
@@ -60,7 +61,7 @@ async function startCamera() {
 			video: {
 				width: { ideal: 1280 },
 				height: { ideal: 720 },
-				facingMode: "user",
+				facingMode: facingMode.value,
 			},
 		});
 
@@ -82,6 +83,11 @@ function stopCamera() {
 		stream = null;
 	}
 	isCameraReady.value = false;
+}
+
+async function toggleCamera() {
+	facingMode.value = facingMode.value === "user" ? "environment" : "user";
+	await startCamera();
 }
 
 // --- Capture & Analyze ---
@@ -214,6 +220,16 @@ onUnmounted(() => {
 				class="video-layer"
 			></video>
 			<canvas ref="canvasRef" class="canvas-layer"></canvas>
+
+			<!-- Camera Toggle Button -->
+			<button @click="toggleCamera" class="camera-toggle-btn" title="카메라 전환">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M17 3l4 4-4 4"/>
+					<path d="M3 11v-1a4 4 0 0 1 4-4h14"/>
+					<path d="M7 21l-4-4 4-4"/>
+					<path d="M21 13v1a4 4 0 0 1-4 4H3"/>
+				</svg>
+			</button>
 
 			<!-- Guide Overlay -->
 			<div class="guide-overlay" v-if="quizState === 'idle'">
@@ -386,6 +402,32 @@ onUnmounted(() => {
 	border-radius: 20px;
 	z-index: 50;
 	font-weight: bold;
+}
+
+.camera-toggle-btn {
+	position: absolute;
+	top: 20px;
+	right: 20px;
+	z-index: 40;
+	background: rgba(255, 255, 255, 0.9);
+	border: none;
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	transition: all 0.2s ease;
+	color: #2c3e50;
+}
+.camera-toggle-btn:hover {
+	background: rgba(255, 255, 255, 1);
+	transform: scale(1.05);
+}
+.camera-toggle-btn:active {
+	transform: scale(0.95);
 }
 
 .controls {
